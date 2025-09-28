@@ -5,7 +5,7 @@ const router = express.Router();
 // Schedule a new tweet
 router.post('/schedule', async (req, res) => {
   try {
-    const { userId, content, scheduledTime } = req.body;
+    const { userId, content, scheduledTime, imageUrl, hasImage, postType, engagementFeatures } = req.body;
 
     if (!userId || !content || !scheduledTime) {
       return res.status(400).json({ error: 'Missing required fields' });
@@ -18,7 +18,11 @@ router.post('/schedule', async (req, res) => {
     const tweet = new Tweet({
       userId,
       content,
-      scheduledTime: new Date(scheduledTime)
+      scheduledTime: new Date(scheduledTime),
+      imageUrl: imageUrl || null,
+      hasImage: hasImage || false,
+      postType: postType || 'static',
+      engagementFeatures: engagementFeatures || {}
     });
 
     await tweet.save();
@@ -79,6 +83,18 @@ router.delete('/:tweetId', async (req, res) => {
   } catch (error) {
     console.error('Delete tweet error:', error);
     res.status(500).json({ error: 'Failed to delete tweet' });
+  }
+});
+
+// Manual trigger for testing scheduled tweets
+router.post('/trigger-scheduler', async (req, res) => {
+  try {
+    const { checkAndPostScheduledTweets } = require('../services/tweetScheduler');
+    await checkAndPostScheduledTweets();
+    res.json({ message: 'Scheduler triggered manually' });
+  } catch (error) {
+    console.error('Manual scheduler trigger error:', error);
+    res.status(500).json({ error: 'Failed to trigger scheduler' });
   }
 });
 

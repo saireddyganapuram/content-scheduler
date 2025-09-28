@@ -1,6 +1,7 @@
 import { useUser } from '@clerk/clerk-react'
 import { useState, useEffect } from 'react'
 import { twitterAPI, chatbotAPI, tweetsAPI } from '../services/api'
+import SuccessPopup from '../components/SuccessPopup'
 
 export default function Dashboard() {
   const { user } = useUser()
@@ -8,8 +9,12 @@ export default function Dashboard() {
   const [twitterUsername, setTwitterUsername] = useState('')
   const [prompt, setPrompt] = useState('')
   const [generatedTweet, setGeneratedTweet] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [scheduledTime, setScheduledTime] = useState('')
+  const [includeImage, setIncludeImage] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [successMessage, setSuccessMessage] = useState('')
 
   useEffect(() => {
     if (user?.id) {
@@ -38,13 +43,36 @@ export default function Dashboard() {
     }
   }
 
+  const handleDisconnectTwitter = async () => {
+    if (!confirm('Are you sure you want to disconnect your Twitter account?')) {
+      return
+    }
+    
+    try {
+      await twitterAPI.disconnect(user.id)
+      setTwitterConnected(false)
+      setTwitterUsername('')
+      alert('Twitter account disconnected successfully!')
+    } catch (error) {
+      console.error('Error disconnecting Twitter:', error)
+      alert('Failed to disconnect Twitter account.')
+    }
+  }
+
   const handleGenerateTweet = async () => {
     if (!prompt.trim()) return
     
     setIsGenerating(true)
     try {
-      const response = await chatbotAPI.generateTweet(prompt)
-      setGeneratedTweet(response.data.tweet)
+      if (includeImage) {
+        const response = await chatbotAPI.generateWithImage(prompt)
+        setGeneratedTweet(response.data.tweet)
+        setImageUrl(response.data.imageUrl || '')
+      } else {
+        const response = await chatbotAPI.generateTweet(prompt)
+        setGeneratedTweet(response.data.tweet)
+        setImageUrl('')
+      }
     } catch (error) {
       console.error('Error generating tweet:', error)
     } finally {
@@ -56,14 +84,17 @@ export default function Dashboard() {
     if (!generatedTweet || !scheduledTime) return
     
     try {
-      await tweetsAPI.schedule(user.id, generatedTweet, scheduledTime)
-      alert('Tweet scheduled successfully!')
+      await tweetsAPI.schedule(user.id, generatedTweet, scheduledTime, imageUrl, !!imageUrl)
+      setSuccessMessage('Tweet scheduled successfully!')
+      setShowSuccess(true)
       setGeneratedTweet('')
+      setImageUrl('')
       setScheduledTime('')
       setPrompt('')
     } catch (error) {
       console.error('Error scheduling tweet:', error)
-      alert('Failed to schedule tweet')
+      setSuccessMessage('Failed to schedule tweet')
+      setShowSuccess(true)
     }
   }
 
@@ -75,9 +106,17 @@ export default function Dashboard() {
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">Twitter Account</h2>
         {twitterConnected ? (
-          <div className="flex items-center text-green-600">
-            <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
-            Connected to @{twitterUsername}
+          <div className="space-y-3">
+            <div className="flex items-center text-green-600">
+              <span className="w-3 h-3 bg-green-500 rounded-full mr-2"></span>
+              Connected to @{twitterUsername}
+            </div>
+            <button 
+              onClick={handleDisconnectTwitter}
+              className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm"
+            >
+              Disconnect Twitter
+            </button>
           </div>
         ) : (
           <div>
@@ -102,12 +141,24 @@ export default function Dashboard() {
             placeholder="Describe what you want to tweet about..."
             className="w-full p-3 border rounded-lg resize-none h-24"
           />
+          <div className="flex items-center gap-4 mb-4">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={includeImage}
+                onChange={(e) => setIncludeImage(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-sm">Include image description</span>
+            </label>
+          </div>
+          
           <button
             onClick={handleGenerateTweet}
             disabled={isGenerating || !prompt.trim()}
             className="bg-purple-600 text-white px-6 py-2 rounded hover:bg-purple-700 disabled:opacity-50"
           >
-            {isGenerating ? 'Generating...' : 'Generate Tweet'}
+            {isGenerating ? 'Generating...' : includeImage ? 'Generate Tweet + Image' : 'Generate Tweet'}
           </button>
           
           {generatedTweet && (
@@ -115,6 +166,17 @@ export default function Dashboard() {
               <h3 className="font-medium mb-2">Generated Tweet:</h3>
               <p className="text-gray-800 mb-3">{generatedTweet}</p>
               <p className="text-sm text-gray-600 mb-3">{generatedTweet.length}/280 characters</p>
+              
+              {imageUrl && (
+                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium mb-2 text-blue-800">Generated Image:</h4>
+                  <img 
+                    src={`http://localhost:5000${imageUrl}`} 
+                    alt="Generated tweet image" 
+                    className="w-full max-w-md rounded-lg shadow-md"
+                  />
+                </div>
+              )}
               
               <div className="flex gap-3 items-end">
                 <div className="flex-1">
@@ -143,6 +205,12 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      <SuccessPopup 
+        show={showSuccess}
+        message={successMessage}
+        onClose={() => setShowSuccess(false)}
+      />
     </div>
   )
 }

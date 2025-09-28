@@ -17,7 +17,11 @@ const userSchema = new mongoose.Schema({
   isTwitterConnected: {
     type: Boolean,
     default: false
-  }
+  },
+  // Temporary OAuth data for session reliability
+  tempCodeVerifier: String,
+  tempState: String,
+  tempStateExpiry: Date
 }, {
   timestamps: true
 });

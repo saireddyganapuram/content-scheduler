@@ -20,7 +20,22 @@ const tweetSchema = new mongoose.Schema({
     default: 'scheduled'
   },
   twitterId: String,
-  errorMessage: String
+  errorMessage: String,
+  imageUrl: String,
+  hasImage: {
+    type: Boolean,
+    default: false
+  },
+  postType: {
+    type: String,
+    enum: ['dynamic', 'static'],
+    default: 'static'
+  },
+  engagementFeatures: {
+    hasQuestion: { type: Boolean, default: false },
+    hasCall2Action: { type: Boolean, default: false },
+    hasHashtags: { type: Boolean, default: true }
+  }
 }, {
   timestamps: true
 });

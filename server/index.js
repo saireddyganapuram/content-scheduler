@@ -16,24 +16,38 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
+
+// Serve uploaded images
+app.use('/uploads', express.static('uploads'));
+
+// Serve static files (generated images)
+app.use('/uploads', express.static('uploads'));
+
 app.use(session({
   secret: process.env.JWT_SECRET || 'fallback-secret',
   resave: false,
   saveUninitialized: true,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI
+    mongoUrl: process.env.MONGODB_URI,
+    touchAfter: 24 * 3600 // lazy session update
   }),
   cookie: { 
     secure: false, // Set to true in production with HTTPS
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' // Important for OAuth flows
+  },
+  name: 'twitter.scheduler.sid' // Custom session name
 }));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/twitter', require('./routes/twitter'));
+app.use('/api/twitter', require('./routes/twitter-oauth1'));
 app.use('/api/chatbot', require('./routes/chatbot'));
 app.use('/api/tweets', require('./routes/tweets'));
+app.use('/api/business', require('./routes/business'));
+app.use('/api/test', require('./routes/test-media'));
 
 // MongoDB connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -42,6 +56,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 // Tweet scheduler - runs every minute
 cron.schedule('* * * * *', async () => {
+  console.log('Cron job triggered at:', new Date().toISOString());
   const { checkAndPostScheduledTweets } = require('./services/tweetScheduler');
   await checkAndPostScheduledTweets();
 });

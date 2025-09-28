@@ -3,10 +3,12 @@ import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import { useState, useEffect } from 'react'
 import { useUser } from '@clerk/clerk-react'
+import { useNavigate } from 'react-router-dom'
 import { tweetsAPI } from '../services/api'
 
 export default function Calendar() {
   const { user } = useUser()
+  const navigate = useNavigate()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -39,23 +41,9 @@ export default function Calendar() {
     }
   }
 
-  const handleDateClick = async (arg) => {
-    const content = prompt('Enter tweet content (max 280 characters):')
-    if (content && content.length <= 280) {
-      const time = prompt('Enter time (HH:MM):', '12:00')
-      if (time) {
-        const scheduledTime = `${arg.dateStr}T${time}:00`
-        try {
-          await tweetsAPI.schedule(user.id, content, scheduledTime)
-          loadScheduledTweets() // Reload events
-        } catch (error) {
-          console.error('Error scheduling tweet:', error)
-          alert('Failed to schedule tweet')
-        }
-      }
-    } else if (content && content.length > 280) {
-      alert('Tweet content exceeds 280 characters')
-    }
+  const handleDateClick = (dateInfo) => {
+    const selectedDate = dateInfo.dateStr
+    navigate(`/day/${selectedDate}`)
   }
 
   const handleEventClick = async (clickInfo) => {
@@ -112,8 +100,8 @@ export default function Calendar() {
       )}
       
       <div className="mt-6 text-sm text-gray-600">
-        <p>• Click on any date to schedule a new tweet</p>
-        <p>• Click on existing tweets to edit or delete them</p>
+        <p>• Click on any date to view and manage posts for that day</p>
+        <p>• Click on existing tweets to see details</p>
       </div>
     </div>
   )

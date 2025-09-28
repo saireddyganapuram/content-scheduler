@@ -4,6 +4,7 @@ import Header from './components/Header'
 import Dashboard from './pages/Dashboard'
 import Calendar from './pages/Calendar'
 import Landing from './pages/Landing'
+import DayView from './pages/DayView'
 
 function ProtectedRoute({ children }) {
   return (
@@ -28,6 +29,11 @@ export default function App() {
         <Route path="/calendar" element={
           <ProtectedRoute>
             <Calendar />
+          </ProtectedRoute>
+        } />
+        <Route path="/day/:date" element={
+          <ProtectedRoute>
+            <DayView />
           </ProtectedRoute>
         } />
       </Routes>
